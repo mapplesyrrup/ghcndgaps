@@ -36,6 +36,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# GHCN-D reference/station data cache
+/.data-cache/
+
+# local Claude Code permission settings
+/.claude/settings.local.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
