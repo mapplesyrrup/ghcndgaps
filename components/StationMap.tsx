@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { DeckGL } from "@deck.gl/react";
 import { ScatterplotLayer } from "@deck.gl/layers";
-import { Map as MapLibreMap, type MapRef } from "react-map-gl/maplibre";
+import { Map as MapLibreMap } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { StationResult, BoundingBox } from "@/lib/types";
 import { missingPctToColor } from "@/lib/colorScale";
@@ -61,51 +61,6 @@ function initialViewState(bbox: BoundingBox) {
 export function StationMap({ stations, bbox }: StationMapProps) {
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const viewState = useMemo(() => initialViewState(bbox), [bbox]);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<MapRef | null>(null);
-  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
-
-  // MapLibre reads its container's size once at construction (or when .resize()
-  // is called) — it does not auto-follow later CSS/prop size changes on its own,
-  // so re-measuring the container isn't enough; the map must be told explicitly.
-  useEffect(() => {
-    mapRef.current?.resize();
-  }, [size]);
-
-  // react-map-gl/deck.gl can collapse to a 0/300x150 fallback when nested inside
-  // this flex layout (percentage sizing through an absolutely-positioned wrapper
-  // with no positioned ancestor resolves unreliably). Measuring the container
-  // in JS and passing explicit pixel sizes sidesteps that entirely.
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const measure = () => {
-      const rect = container.getBoundingClientRect();
-      setSize({ width: rect.width, height: rect.height });
-    };
-
-    // The container can measure incorrectly on the very first effect pass
-    // (before the flex layout has fully settled), and neither requestAnimationFrame
-    // nor ResizeObserver's initial callback are guaranteed to fire promptly in
-    // every rendering context (e.g. a backgrounded/throttled tab). setTimeout
-    // retries are the one scheduling primitive that reliably still fires there,
-    // so use those to self-correct shortly after mount.
-    measure();
-    const timers = [50, 200, 500, 1000].map((delay) => setTimeout(measure, delay));
-
-    const observer = new ResizeObserver((entries) => {
-      const { width, height } = entries[0].contentRect;
-      setSize({ width, height });
-    });
-    observer.observe(container);
-    window.addEventListener("resize", measure);
-    return () => {
-      timers.forEach(clearTimeout);
-      observer.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, []);
 
   const layers = [
     new ScatterplotLayer<StationResult>({
@@ -132,27 +87,15 @@ export function StationMap({ stations, bbox }: StationMapProps) {
   ];
 
   return (
-    <div
-      ref={containerRef}
-      className="relative h-full w-full overflow-hidden rounded-lg border border-black/10 dark:border-white/10"
-    >
-      {size && size.width > 0 && size.height > 0 && (
-        <DeckGL
-          width={size.width}
-          height={size.height}
-          initialViewState={viewState}
-          controller
-          layers={layers}
-          getCursor={() => (hover ? "pointer" : "grab")}
-        >
-          <MapLibreMap
-            ref={mapRef}
-            mapStyle={BASEMAP_STYLE}
-            style={{ width: size.width, height: size.height }}
-            onLoad={() => mapRef.current?.resize()}
-          />
-        </DeckGL>
-      )}
+    <div className="relative h-full w-full overflow-hidden rounded-lg border border-black/10 dark:border-white/10">
+      <DeckGL
+        initialViewState={viewState}
+        controller
+        layers={layers}
+        getCursor={() => (hover ? "pointer" : "grab")}
+      >
+        <MapLibreMap mapStyle={BASEMAP_STYLE} />
+      </DeckGL>
 
       {hover && (
         <div
