@@ -1,9 +1,10 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import type { InventoryRow, StationRef } from "./types";
 
 const BASE_URL = "https://www.ncei.noaa.gov/pub/data/ghcn/daily";
-const CACHE_DIR = path.join(process.cwd(), ".data-cache");
+const CACHE_DIR = path.join(os.tmpdir(), "ghcndgaps-data-cache");
 const STATIONS_CACHE = path.join(CACHE_DIR, "ghcnd-stations.txt");
 const INVENTORY_CACHE = path.join(CACHE_DIR, "ghcnd-inventory.txt");
 const REFERENCE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 1 week

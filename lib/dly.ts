@@ -1,9 +1,10 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import type { Variable } from "./types";
 
 const BASE_URL = "https://www.ncei.noaa.gov/pub/data/ghcn/daily/all";
-const CACHE_DIR = path.join(process.cwd(), ".data-cache", "dly");
+const CACHE_DIR = path.join(os.tmpdir(), "ghcndgaps-data-cache", "dly");
 const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const RECENT_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours — how often "recent" queries force a re-check
 const DOWNLOAD_TIMEOUT_MS = 10_000;
