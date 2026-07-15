@@ -5,10 +5,10 @@ import type { Variable } from "./types";
 const BASE_URL = "https://www.ncei.noaa.gov/pub/data/ghcn/daily/all";
 const CACHE_DIR = path.join(process.cwd(), ".data-cache", "dly");
 const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const RECENT_CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
-const DOWNLOAD_TIMEOUT_MS = 20_000;
-const DOWNLOAD_RETRIES = 3;
-const CONCURRENCY = 8;
+const RECENT_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours — how often "recent" queries force a re-check
+const DOWNLOAD_TIMEOUT_MS = 10_000;
+const DOWNLOAD_RETRIES = 2;
+const CONCURRENCY = 16;
 
 function cachePath(stationId: string): string {
   return path.join(CACHE_DIR, `${stationId}.dly`);

@@ -7,6 +7,8 @@ const CACHE_DIR = path.join(process.cwd(), ".data-cache");
 const STATIONS_CACHE = path.join(CACHE_DIR, "ghcnd-stations.txt");
 const INVENTORY_CACHE = path.join(CACHE_DIR, "ghcnd-inventory.txt");
 const REFERENCE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 1 week
+const DOWNLOAD_TIMEOUT_MS = 45_000; // these files are several MB
+const DOWNLOAD_RETRIES = 3;
 
 async function ensureCacheDir() {
   await fs.mkdir(CACHE_DIR, { recursive: true });
@@ -21,19 +23,53 @@ async function isFresh(filePath: string): Promise<boolean> {
   }
 }
 
-async function downloadToCache(url: string, dest: string) {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Failed to download ${url}: HTTP ${res.status}`);
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.stat(filePath);
+    return true;
+  } catch {
+    return false;
   }
-  const text = await res.text();
-  await fs.writeFile(dest, text, "utf-8");
+}
+
+async function downloadToCache(url: string, dest: string): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= DOWNLOAD_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (!res.ok) {
+        throw new Error(`Failed to download ${url}: HTTP ${res.status}`);
+      }
+      const text = await res.text();
+      await fs.writeFile(dest, text, "utf-8");
+      return;
+    } catch (err) {
+      clearTimeout(timeout);
+      lastError = err;
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`Failed to download ${url}`);
 }
 
 async function loadRawFile(url: string, dest: string): Promise<string> {
   await ensureCacheDir();
   if (!(await isFresh(dest))) {
-    await downloadToCache(url, dest);
+    try {
+      await downloadToCache(url, dest);
+    } catch (err) {
+      // Fall back to a stale-but-present cache rather than failing the whole request —
+      // NOAA's reference files change rarely, so serving a slightly old copy beats erroring out.
+      if (await fileExists(dest)) {
+        console.warn(`Using stale cache for ${url} after download failure:`, err);
+      } else {
+        throw err;
+      }
+    }
   }
   return fs.readFile(dest, "utf-8");
 }

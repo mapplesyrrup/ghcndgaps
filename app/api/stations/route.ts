@@ -26,6 +26,29 @@ const querySchema = z
     path: ["start"],
   });
 
+const REQUEST_TIMEOUT_MS = 45_000;
+
+class RequestTimeoutError extends Error {}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new RequestTimeoutError(`Timed out after ${ms}ms`)),
+      ms,
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
 export async function GET(request: NextRequest) {
   const params = Object.fromEntries(request.nextUrl.searchParams);
   const parsed = querySchema.safeParse(params);
@@ -42,16 +65,29 @@ export async function GET(request: NextRequest) {
   const endDate = new Date(`${end}T00:00:00Z`);
 
   try {
-    const result = await runMissingAnalysis(variable, startDate, endDate, {
-      latMin,
-      latMax,
-      lonMin,
-      lonMax,
-    });
+    const result = await withTimeout(
+      runMissingAnalysis(variable, startDate, endDate, {
+        latMin,
+        latMax,
+        lonMin,
+        lonMax,
+      }),
+      REQUEST_TIMEOUT_MS,
+    );
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof TooManyStationsError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    if (err instanceof RequestTimeoutError) {
+      console.error("Station query timed out:", err);
+      return NextResponse.json(
+        {
+          error:
+            "NOAA is responding slowly right now, so this query timed out. Try again, or narrow the coordinate box / time range.",
+        },
+        { status: 504 },
+      );
     }
     console.error(err);
     return NextResponse.json(
