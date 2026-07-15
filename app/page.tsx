@@ -60,7 +60,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col bg-[#f9f9f7] dark:bg-[#0d0d0d]">
+    <div className="flex min-h-0 flex-1 flex-col bg-[#f9f9f7] dark:bg-[#0d0d0d]">
       <header className="border-b border-black/10 dark:border-white/10 px-6 py-4">
         <h1 className="text-lg font-semibold text-[#0b0b0b] dark:text-white">
           NOAA GHCN-D Weather Station Gaps Visualizer
@@ -71,7 +71,7 @@ export default function Home() {
         </p>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 p-4 lg:flex-row lg:overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 lg:flex-row lg:overflow-hidden">
         <div className="lg:w-80 lg:shrink-0">
           <ControlPanel
             value={form}
