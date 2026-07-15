@@ -63,7 +63,7 @@ export default function Home() {
     <div className="flex flex-1 flex-col bg-[#f9f9f7] dark:bg-[#0d0d0d]">
       <header className="border-b border-black/10 dark:border-white/10 px-6 py-4">
         <h1 className="text-lg font-semibold text-[#0b0b0b] dark:text-white">
-          GHCN-D Station Gap Visualizer
+          NOAA GHCN-D Weather Station Gaps Visualizer
         </h1>
         <p className="text-sm text-[#52514e] dark:text-[#c3c2b7]">
           Live reporting gaps across NOAA GHCN-Daily weather stations, by variable, time
