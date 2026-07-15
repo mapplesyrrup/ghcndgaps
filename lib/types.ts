@@ -107,5 +107,3 @@ export const PRESETS: Preset[] = [
     end: "2018-10-12",
   },
 ];
-
-export const MAX_STATIONS = 400;

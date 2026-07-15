@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { runMissingAnalysis, TooManyStationsError } from "@/lib/missingAnalysis";
+import { runMissingAnalysis } from "@/lib/missingAnalysis";
 import { VARIABLES } from "@/lib/types";
 
 const querySchema = z
@@ -76,9 +76,6 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json(result);
   } catch (err) {
-    if (err instanceof TooManyStationsError) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
-    }
     if (err instanceof RequestTimeoutError) {
       console.error("Station query timed out:", err);
       return NextResponse.json(

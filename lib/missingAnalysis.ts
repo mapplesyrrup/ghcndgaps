@@ -1,22 +1,12 @@
 import { getReferenceData } from "./ghcnReference";
 import { ensureDlyFilesCached, parseDly } from "./dly";
 import {
-  MAX_STATIONS,
   type BoundingBox,
   type DailySummary,
   type StationResult,
   type StationsResponse,
   type Variable,
 } from "./types";
-
-export class TooManyStationsError extends Error {
-  constructor(public count: number) {
-    super(
-      `${count} stations match this query, which exceeds the ${MAX_STATIONS} limit. Narrow the coordinate box or time range and try again.`,
-    );
-    this.name = "TooManyStationsError";
-  }
-}
 
 function dateRange(start: Date, end: Date): Date[] {
   const dates: Date[] = [];
@@ -58,10 +48,6 @@ export async function runMissingAnalysis(
       s.lon <= bbox.lonMax &&
       eligibleIds.has(s.id),
   );
-
-  if (candidates.length > MAX_STATIONS) {
-    throw new TooManyStationsError(candidates.length);
-  }
 
   const stationIds = candidates.map((s) => s.id);
   await ensureDlyFilesCached(stationIds, endDate);
