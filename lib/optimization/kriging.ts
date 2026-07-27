@@ -60,9 +60,14 @@ export function krigingVariance(
   const x = luSolve(system.lu, b);
   const lagrangeMultiplier = x[n];
 
-  let variance = covariance(0, v);
+  const maxVariance = covariance(0, v);
+  let variance = maxVariance;
   for (let i = 0; i < n; i++) variance -= x[i] * b[i];
   variance -= lagrangeMultiplier;
 
-  return Math.max(0, variance);
+  // True ordinary-kriging variance is provably bounded by C(0) (the "no information"
+  // case) — any excess is floating-point error from a near-singular solve (large,
+  // smooth-variogram systems stay somewhat ill-conditioned even after thinning nearby
+  // stations), not a real estimate, so clamp back into the valid range.
+  return Math.max(0, Math.min(variance, maxVariance));
 }

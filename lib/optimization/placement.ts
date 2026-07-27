@@ -1,5 +1,5 @@
 import type { LatLon } from "./geo";
-import { haversineKm } from "./geo";
+import { haversineKm, thinByMinSpacing } from "./geo";
 import { buildKrigingSystem, krigingVariance, type VariogramParams } from "./kriging";
 import { sitingQualityMultiplier } from "./sitingQuality";
 
@@ -10,9 +10,15 @@ import { sitingQualityMultiplier } from "./sitingQuality";
 // edge of a large, dense bbox look under-informed.
 const MAX_KRIGING_STATIONS = 150;
 
+// Below this spacing, nearby GHCN stations make the covariance matrix ill-conditioned (see
+// thinByMinSpacing) — thin before capping so the cap keeps genuinely spread-out stations
+// instead of a cluster of near-duplicates close to the bbox center.
+const MIN_STATION_SPACING_KM = 3;
+
 export function capActiveStations(stations: LatLon[], center: LatLon): LatLon[] {
-  if (stations.length <= MAX_KRIGING_STATIONS) return stations;
-  return [...stations]
+  const thinned = thinByMinSpacing(stations, MIN_STATION_SPACING_KM);
+  if (thinned.length <= MAX_KRIGING_STATIONS) return thinned;
+  return [...thinned]
     .sort((a, b) => haversineKm(center, a) - haversineKm(center, b))
     .slice(0, MAX_KRIGING_STATIONS);
 }
