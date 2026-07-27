@@ -28,3 +28,9 @@ export function missingPctToColor(pct: number): [number, number, number] {
   }
   return STOPS[STOPS.length - 1][1];
 }
+
+// Same ramp, but keyed by a 0-1 ratio instead of a 0-100 percentage — for magnitudes like
+// kriging variance that don't have a natural percent scale.
+export function ratioToColor(ratio: number): [number, number, number] {
+  return missingPctToColor(ratio * 100);
+}

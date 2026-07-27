@@ -60,6 +60,40 @@ export interface Preset {
   end: string;
 }
 
+export interface ExistingStationPoint {
+  id: string;
+  lat: number;
+  lon: number;
+  name: string;
+}
+
+export interface UncertaintyCell {
+  lat: number;
+  lon: number;
+  variance: number;
+  operational: boolean;
+}
+
+export interface RecommendedSite {
+  rank: number;
+  lat: number;
+  lon: number;
+  score: number;
+}
+
+export interface OptimizeResponse {
+  bbox: BoundingBox;
+  variable: Variable;
+  gridSize: number;
+  cellLatSpan: number;
+  cellLonSpan: number;
+  variogram: { rangeKm: number; partialSill: number; nugget: number };
+  minDistanceKm: number;
+  existingStations: ExistingStationPoint[];
+  grid: UncertaintyCell[];
+  recommended: RecommendedSite[];
+}
+
 export const PRESETS: Preset[] = [
   {
     name: "Hurricane Sandy (2012)",
