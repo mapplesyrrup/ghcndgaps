@@ -102,8 +102,7 @@ export function InterpolateControlPanel({
         </div>
       </div>
       <p className="-mt-2 text-[11px] text-[#898781]">
-        Each station is averaged over this range before kriging, so a wider range smooths over
-        missing days.
+        Each station is averaged over this range before kriging, so a wider range smooths over missing days.
       </p>
 
       <fieldset className="grid grid-cols-2 gap-3">
