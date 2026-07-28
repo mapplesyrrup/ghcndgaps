@@ -203,7 +203,7 @@ export function OptimizeControlPanel({
 
       <div>
         <label className={labelClass} htmlFor="opt-minDistanceKm">
-          Operational filter — max distance to existing infrastructure ({value.minDistanceKm}{" "}
+          Operational filter: max distance to existing infrastructure ({value.minDistanceKm}{" "}
           km)
         </label>
         <input
@@ -218,7 +218,7 @@ export function OptimizeControlPanel({
         />
         <p className="mt-1 text-[11px] text-[#898781]">
           Candidate sites farther than this from any known station are dropped before
-          scoring (proxy for road access / maintainability — see note on the results panel).
+          scoring (proxy for road access / maintainability).
         </p>
       </div>
 
