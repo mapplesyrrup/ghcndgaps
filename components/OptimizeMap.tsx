@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { DeckGL } from "@deck.gl/react";
-import { GridCellLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
+import { PolygonLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import { Map as MapLibreMap } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type {
@@ -12,6 +12,7 @@ import type {
   UncertaintyCell,
 } from "@/lib/types";
 import { ratioToColor } from "@/lib/colorScale";
+import { hexagonPolygon } from "@/lib/hexGeometry";
 
 // Self-contained raster style — matches components/StationMap.tsx so both tabs look the same
 // and neither depends on a vector style.json / glyph / sprite fetch from a CDN.
@@ -98,24 +99,20 @@ export function OptimizeMap({
   const filteredCells = useMemo(() => grid.filter((c) => !c.operational), [grid]);
 
   const layers = [
-    new GridCellLayer<UncertaintyCell>({
+    new PolygonLayer<UncertaintyCell>({
       id: "filtered-out-cells",
       data: filteredCells,
-      diskResolution: 6,
-      extruded: false,
-      cellSize: cellRadiusMeters * 2,
-      getPosition: (d) => [d.lon, d.lat],
+      getPolygon: (d) => hexagonPolygon(d, cellRadiusMeters),
       getFillColor: [180, 178, 170, 60],
+      stroked: false,
       pickable: false,
     }),
-    new GridCellLayer<UncertaintyCell>({
+    new PolygonLayer<UncertaintyCell>({
       id: "uncertainty-cells",
       data: operationalCells,
-      diskResolution: 6,
-      extruded: false,
-      cellSize: cellRadiusMeters * 2,
-      getPosition: (d) => [d.lon, d.lat],
+      getPolygon: (d) => hexagonPolygon(d, cellRadiusMeters),
       getFillColor: (d) => [...ratioToColor(d.variance / maxVariance), 190],
+      stroked: false,
       pickable: true,
       onHover: (info) => {
         if (info.object) {

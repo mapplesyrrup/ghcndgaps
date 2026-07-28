@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { DeckGL } from "@deck.gl/react";
-import { GridCellLayer, ScatterplotLayer } from "@deck.gl/layers";
+import { PolygonLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { Map as MapLibreMap } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { BoundingBox, InterpolatedCell, InterpolatedStationPoint } from "@/lib/types";
 import { valueToColor } from "@/lib/colorScale";
+import { hexagonPolygon } from "@/lib/hexGeometry";
 
 // Matches components/StationMap.tsx / OptimizeMap.tsx so all three tabs look the same.
 const BASEMAP_STYLE = {
@@ -92,14 +93,12 @@ export function InterpolateMap({
   }, [bbox, cellLatSpan, cellLonSpan]);
 
   const layers = [
-    new GridCellLayer<InterpolatedCell>({
+    new PolygonLayer<InterpolatedCell>({
       id: "interpolated-cells",
       data: grid,
-      diskResolution: 6,
-      extruded: false,
-      cellSize: cellRadiusMeters * 2,
-      getPosition: (d) => [d.lon, d.lat],
+      getPolygon: (d) => hexagonPolygon(d, cellRadiusMeters),
       getFillColor: (d) => [...valueToColor(d.estimate, minValue, maxValue), 190],
+      stroked: false,
       pickable: true,
       onHover: (info) => {
         if (info.object) {
