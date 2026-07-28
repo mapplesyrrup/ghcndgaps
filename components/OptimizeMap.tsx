@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { DeckGL } from "@deck.gl/react";
-import { ScatterplotLayer, TextLayer } from "@deck.gl/layers";
+import { GridCellLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import { Map as MapLibreMap } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type {
@@ -84,36 +84,38 @@ export function OptimizeMap({
     [grid],
   );
 
-  // Cell footprint in meters, sized to the grid spacing so cells tile without gaps.
+  // Hexagon "radius" (center to vertex) in meters. Flat-to-flat width is radius * sqrt(3), so
+  // sizing off the tighter of lat/lon spacing with a bit of overlap keeps the hex tiling
+  // gapless across the square candidate lattice instead of leaving diamond-shaped holes.
   const cellRadiusMeters = useMemo(() => {
     const centerLat = (bbox.latMin + bbox.latMax) / 2;
     const latMeters = cellLatSpan * 111_320;
     const lonMeters = cellLonSpan * 111_320 * Math.cos((centerLat * Math.PI) / 180);
-    return (Math.min(latMeters, lonMeters) / 2) * 0.9;
+    return Math.min(latMeters, lonMeters) * 0.6;
   }, [bbox, cellLatSpan, cellLonSpan]);
 
   const operationalCells = useMemo(() => grid.filter((c) => c.operational), [grid]);
   const filteredCells = useMemo(() => grid.filter((c) => !c.operational), [grid]);
 
   const layers = [
-    new ScatterplotLayer<UncertaintyCell>({
+    new GridCellLayer<UncertaintyCell>({
       id: "filtered-out-cells",
       data: filteredCells,
+      diskResolution: 6,
+      extruded: false,
+      cellSize: cellRadiusMeters * 2,
       getPosition: (d) => [d.lon, d.lat],
       getFillColor: [180, 178, 170, 60],
-      getRadius: cellRadiusMeters,
-      radiusUnits: "meters",
-      stroked: false,
       pickable: false,
     }),
-    new ScatterplotLayer<UncertaintyCell>({
+    new GridCellLayer<UncertaintyCell>({
       id: "uncertainty-cells",
       data: operationalCells,
+      diskResolution: 6,
+      extruded: false,
+      cellSize: cellRadiusMeters * 2,
       getPosition: (d) => [d.lon, d.lat],
       getFillColor: (d) => [...ratioToColor(d.variance / maxVariance), 190],
-      getRadius: cellRadiusMeters,
-      radiusUnits: "meters",
-      stroked: false,
       pickable: true,
       onHover: (info) => {
         if (info.object) {

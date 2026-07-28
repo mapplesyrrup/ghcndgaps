@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { DeckGL } from "@deck.gl/react";
-import { ScatterplotLayer } from "@deck.gl/layers";
+import { GridCellLayer, ScatterplotLayer } from "@deck.gl/layers";
 import { Map as MapLibreMap } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { BoundingBox, InterpolatedCell, InterpolatedStationPoint } from "@/lib/types";
@@ -81,22 +81,25 @@ export function InterpolateMap({
     return [Math.min(...values), Math.max(...values)];
   }, [grid, existingStations]);
 
+  // Hexagon "radius" (center to vertex) in meters. Flat-to-flat width is radius * sqrt(3), so
+  // sizing off the tighter of lat/lon spacing with a bit of overlap keeps the hex tiling
+  // gapless across the square candidate lattice instead of leaving diamond-shaped holes.
   const cellRadiusMeters = useMemo(() => {
     const centerLat = (bbox.latMin + bbox.latMax) / 2;
     const latMeters = cellLatSpan * 111_320;
     const lonMeters = cellLonSpan * 111_320 * Math.cos((centerLat * Math.PI) / 180);
-    return (Math.min(latMeters, lonMeters) / 2) * 0.9;
+    return Math.min(latMeters, lonMeters) * 0.6;
   }, [bbox, cellLatSpan, cellLonSpan]);
 
   const layers = [
-    new ScatterplotLayer<InterpolatedCell>({
+    new GridCellLayer<InterpolatedCell>({
       id: "interpolated-cells",
       data: grid,
+      diskResolution: 6,
+      extruded: false,
+      cellSize: cellRadiusMeters * 2,
       getPosition: (d) => [d.lon, d.lat],
       getFillColor: (d) => [...valueToColor(d.estimate, minValue, maxValue), 190],
-      getRadius: cellRadiusMeters,
-      radiusUnits: "meters",
-      stroked: false,
       pickable: true,
       onHover: (info) => {
         if (info.object) {
