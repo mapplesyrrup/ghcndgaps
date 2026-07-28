@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getReferenceData } from "@/lib/ghcnReference";
 import { VARIABLES, type OptimizeResponse } from "@/lib/types";
 import { buildCandidateGrid } from "@/lib/optimization/grid";
+import { isOnLand } from "@/lib/optimization/landMask";
 import { passesOperationalFilter } from "@/lib/optimization/operationalFilter";
 import { capActiveStations, greedyPlacement, scoreGrid } from "@/lib/optimization/placement";
 import type { VariogramParams } from "@/lib/optimization/kriging";
@@ -93,8 +94,10 @@ async function computeOptimization(
   const variogram: VariogramParams = { rangeKm, partialSill: 1, nugget: 0.05 };
 
   const { cells, latStep, lonStep } = buildCandidateGrid(bbox, gridSize);
-  const operationalMask = cells.map((cell) =>
-    passesOperationalFilter(cell, nearby, { maxDistanceToInfrastructureKm: minDistanceKm }),
+  const operationalMask = cells.map(
+    (cell) =>
+      isOnLand(cell) &&
+      passesOperationalFilter(cell, nearby, { maxDistanceToInfrastructureKm: minDistanceKm }),
   );
 
   const scored = scoreGrid(krigingStations, cells, variogram, operationalMask);

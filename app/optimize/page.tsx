@@ -89,7 +89,7 @@ export default function OptimizePage() {
               {data.existingStations.length} existing station
               {data.existingStations.length === 1 ? "" : "s"} informing the surface ·{" "}
               {data.grid.filter((c) => c.operational).length}/{data.grid.length} candidate
-              cells passed the accessibility filter
+              cells are on land and passed the accessibility filter
             </div>
           )}
           <div className="mt-3 rounded-md border border-dashed border-black/15 dark:border-white/15 px-3 py-2 text-[11px] leading-relaxed text-[#898781]">

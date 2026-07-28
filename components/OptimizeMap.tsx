@@ -240,7 +240,7 @@ export function OptimizeMap({
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#b4b2aa]/60" />
-          filtered out (too far from infrastructure)
+          filtered out (water, or too far from infrastructure)
         </div>
       </div>
     </div>
