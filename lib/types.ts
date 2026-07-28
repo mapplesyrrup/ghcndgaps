@@ -102,11 +102,14 @@ export interface InterpolatedStationPoint {
   value: number;
 }
 
-export interface InterpolatedCell {
-  lat: number;
-  lon: number;
-  estimate: number;
-  variance: number;
+export interface VoronoiCell {
+  stationId: string;
+  polygon: [number, number][]; // closed ring of [lon, lat]
+}
+
+export interface ContourLine {
+  level: number; // display units
+  paths: [number, number][][]; // each entry is one ring/path of [lon, lat]
 }
 
 export interface InterpolateResponse {
@@ -115,11 +118,11 @@ export interface InterpolateResponse {
   start: string;
   end: string;
   unit: string;
-  gridSize: number;
-  cellLatSpan: number;
-  cellLonSpan: number;
+  minValue: number;
+  maxValue: number;
   existingStations: InterpolatedStationPoint[];
-  grid: InterpolatedCell[];
+  voronoi: VoronoiCell[];
+  contours: ContourLine[];
 }
 
 export const PRESETS: Preset[] = [

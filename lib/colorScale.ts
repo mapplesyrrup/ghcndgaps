@@ -42,3 +42,18 @@ export function valueToColor(value: number, min: number, max: number): [number, 
   const ratio = (value - min) / (max - min);
   return ratioToColor(Math.max(0, Math.min(1, ratio)));
 }
+
+// Quantizes a value into the bands defined by a sorted list of thresholds (e.g. contour
+// levels) before mapping through the ramp, giving the discrete banded-color look of a
+// classic isopleth map instead of a smooth gradient. Passing the same `levels` used to draw
+// contour lines keeps a Voronoi cell's fill color and the isolines crossing it consistent.
+export function bandedColor(value: number, levels: number[]): [number, number, number] {
+  if (!Number.isFinite(value)) return ratioToColor(0.5);
+  let band = 0;
+  for (const level of levels) {
+    if (value >= level) band++;
+    else break;
+  }
+  const bandCount = levels.length + 1;
+  return ratioToColor(bandCount > 1 ? band / (bandCount - 1) : 0.5);
+}
