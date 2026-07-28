@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { Delaunay } from "d3-delaunay";
+import { contours as contourGenerator } from "d3-contour";
 import { getReferenceData } from "@/lib/ghcnReference";
 import { ensureDlyFilesCached, parseDly } from "@/lib/dly";
-import { VARIABLES, type InterpolateResponse } from "@/lib/types";
+import { VARIABLES, type ContourLine, type InterpolateResponse } from "@/lib/types";
 import { toDisplayUnit, unitLabel } from "@/lib/units";
 import { buildCandidateGrid } from "@/lib/optimization/grid";
-import { isOnLand } from "@/lib/optimization/landMask";
 import { buildKrigingSystem, krigingPredict, type VariogramParams } from "@/lib/optimization/kriging";
 import { capActiveStations } from "@/lib/optimization/placement";
 
@@ -18,8 +19,9 @@ const querySchema = z
     latMax: z.coerce.number().min(-90).max(90),
     lonMin: z.coerce.number().min(-180).max(180),
     lonMax: z.coerce.number().min(-180).max(180),
-    gridSize: z.coerce.number().int().min(4).max(32).default(20),
+    gridSize: z.coerce.number().int().min(8).max(60).default(30),
     rangeKm: z.coerce.number().min(5).max(2000).default(150),
+    contourLevels: z.coerce.number().int().min(3).max(15).default(8),
   })
   .refine((v) => v.latMin <= v.latMax, {
     message: "latMin must be <= latMax",
@@ -57,10 +59,32 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
+// Converts a d3-contour ring — coordinates in grid-index space, where [0, gridSize] on each
+// axis spans the bbox — back into [lon, lat] pairs.
+function ringToLonLat(
+  ring: [number, number][],
+  bbox: { latMin: number; lonMin: number },
+  lonStep: number,
+  latStep: number,
+): [number, number][] {
+  return ring.map(([x, y]) => [bbox.lonMin + x * lonStep, bbox.latMin + y * latStep]);
+}
+
 async function computeInterpolation(
   params: z.infer<typeof querySchema>,
 ): Promise<InterpolateResponse> {
-  const { variable, start, end, latMin, latMax, lonMin, lonMax, gridSize, rangeKm } = params;
+  const {
+    variable,
+    start,
+    end,
+    latMin,
+    latMax,
+    lonMin,
+    lonMax,
+    gridSize,
+    rangeKm,
+    contourLevels,
+  } = params;
   const bbox = { latMin, latMax, lonMin, lonMax };
   const startDate = new Date(`${start}T00:00:00Z`);
   const endDate = new Date(`${end}T00:00:00Z`);
@@ -86,7 +110,8 @@ async function computeInterpolation(
 
   const center = { lat: (latMin + latMax) / 2, lon: (lonMin + lonMax) / 2 };
   // Same station cap/thinning as the optimization tab: bounds both the .dly download cost
-  // and the kriging solve, and keeps the covariance matrix well-conditioned.
+  // and the kriging solve, and keeps the covariance matrix well-conditioned. It also keeps
+  // the Voronoi diagram below from producing degenerate slivers between near-duplicate sites.
   const candidates = capActiveStations(inBbox, center);
 
   await ensureDlyFilesCached(candidates.map((s) => s.id), endDate);
@@ -117,13 +142,53 @@ async function computeInterpolation(
   const variogram: VariogramParams = { rangeKm, partialSill: 1, nugget: 0.05 };
   const system = buildKrigingSystem(known, variogram);
 
+  // Dense sampling grid (unlike the optimize tab, not land-masked — isoline/Thiessen maps
+  // conventionally cover the whole study area, water included) purely to feed the marching
+  // squares contour generator; it isn't returned to the client itself.
   const { cells, latStep, lonStep } = buildCandidateGrid(bbox, gridSize);
-  const grid: InterpolateResponse["grid"] = [];
-  for (const cell of cells) {
-    if (!isOnLand(cell)) continue; // don't extrapolate the field out over open water
-    const { estimate, variance } = krigingPredict(system, cell, knownValuesRaw, variogram);
-    if (Number.isNaN(estimate)) continue; // no known stations at all
-    grid.push({ lat: cell.lat, lon: cell.lon, estimate: toDisplayUnit(variable, estimate), variance });
+  const values = cells.map(
+    (cell) => toDisplayUnit(variable, krigingPredict(system, cell, knownValuesRaw, variogram).estimate),
+  );
+
+  const combined = [...values, ...existingStations.map((s) => s.value)].filter(Number.isFinite);
+  const minValue = combined.length ? Math.min(...combined) : 0;
+  const maxValue = combined.length ? Math.max(...combined) : 1;
+
+  const contours: ContourLine[] = [];
+  if (known.length > 0 && maxValue > minValue) {
+    const generator = contourGenerator().size([gridSize, gridSize]);
+    const levels = Array.from(
+      { length: contourLevels },
+      (_, i) => minValue + ((i + 1) * (maxValue - minValue)) / (contourLevels + 1),
+    );
+
+    for (const level of levels) {
+      const multiPolygon = generator.contour(values, level);
+      const paths: [number, number][][] = [];
+      for (const polygon of multiPolygon.coordinates) {
+        for (const ring of polygon) {
+          if (ring.length >= 3) {
+            paths.push(ringToLonLat(ring as [number, number][], bbox, lonStep, latStep));
+          }
+        }
+      }
+      if (paths.length > 0) contours.push({ level, paths });
+    }
+  }
+
+  // Thiessen/Voronoi polygons: each station's area of representation, clipped to the bbox.
+  const voronoi: InterpolateResponse["voronoi"] = [];
+  if (existingStations.length > 0) {
+    const delaunay = Delaunay.from(
+      existingStations,
+      (s) => s.lon,
+      (s) => s.lat,
+    );
+    const diagram = delaunay.voronoi([lonMin, latMin, lonMax, latMax]);
+    existingStations.forEach((station, i) => {
+      const polygon = diagram.cellPolygon(i);
+      if (polygon) voronoi.push({ stationId: station.id, polygon: polygon as [number, number][] });
+    });
   }
 
   return {
@@ -132,11 +197,11 @@ async function computeInterpolation(
     start,
     end,
     unit: unitLabel(variable),
-    gridSize,
-    cellLatSpan: latStep,
-    cellLonSpan: lonStep,
+    minValue,
+    maxValue,
     existingStations,
-    grid,
+    voronoi,
+    contours,
   };
 }
 
