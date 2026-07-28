@@ -94,6 +94,34 @@ export interface OptimizeResponse {
   recommended: RecommendedSite[];
 }
 
+export interface InterpolatedStationPoint {
+  id: string;
+  lat: number;
+  lon: number;
+  name: string;
+  value: number;
+}
+
+export interface InterpolatedCell {
+  lat: number;
+  lon: number;
+  estimate: number;
+  variance: number;
+}
+
+export interface InterpolateResponse {
+  bbox: BoundingBox;
+  variable: Variable;
+  start: string;
+  end: string;
+  unit: string;
+  gridSize: number;
+  cellLatSpan: number;
+  cellLonSpan: number;
+  existingStations: InterpolatedStationPoint[];
+  grid: InterpolatedCell[];
+}
+
 export const PRESETS: Preset[] = [
   {
     name: "Hurricane Sandy (2012)",

@@ -15,7 +15,7 @@ const MAX_KRIGING_STATIONS = 150;
 // instead of a cluster of near-duplicates close to the bbox center.
 const MIN_STATION_SPACING_KM = 3;
 
-export function capActiveStations(stations: LatLon[], center: LatLon): LatLon[] {
+export function capActiveStations<T extends LatLon>(stations: T[], center: LatLon): T[] {
   const thinned = thinByMinSpacing(stations, MIN_STATION_SPACING_KM);
   if (thinned.length <= MAX_KRIGING_STATIONS) return thinned;
   return [...thinned]

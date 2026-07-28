@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/", label: "Station Gaps" },
   { href: "/optimize", label: "Optimization of Weather Station Placement" },
+  { href: "/interpolate", label: "Interpolation" },
 ];
 
 export function NavBar() {

@@ -30,15 +30,15 @@ export function haversineKm(a: LatLon, b: LatLon): number {
 //
 // Uses a spatial hash grid so it stays roughly O(n) instead of the O(n^2) of checking every
 // pair directly.
-export function thinByMinSpacing(points: LatLon[], minSpacingKm: number): LatLon[] {
+export function thinByMinSpacing<T extends LatLon>(points: T[], minSpacingKm: number): T[] {
   if (points.length === 0 || minSpacingKm <= 0) return points;
 
   const avgLat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
   const latBucketDeg = minSpacingKm / 111;
   const lonBucketDeg = minSpacingKm / (111 * Math.max(Math.cos(toRad(avgLat)), 0.1));
 
-  const buckets = new Map<string, LatLon[]>();
-  const kept: LatLon[] = [];
+  const buckets = new Map<string, T[]>();
+  const kept: T[] = [];
 
   function bucketKey(lat: number, lon: number): string {
     return `${Math.floor(lat / latBucketDeg)},${Math.floor(lon / lonBucketDeg)}`;

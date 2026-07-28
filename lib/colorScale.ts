@@ -34,3 +34,11 @@ export function missingPctToColor(pct: number): [number, number, number] {
 export function ratioToColor(ratio: number): [number, number, number] {
   return missingPctToColor(ratio * 100);
 }
+
+// Same ramp again, keyed by an arbitrary value against a [min, max] range — for interpolated
+// field values (temperature, precipitation) whose scale depends on the variable and query.
+export function valueToColor(value: number, min: number, max: number): [number, number, number] {
+  if (!Number.isFinite(value) || max <= min) return ratioToColor(0.5);
+  const ratio = (value - min) / (max - min);
+  return ratioToColor(Math.max(0, Math.min(1, ratio)));
+}
