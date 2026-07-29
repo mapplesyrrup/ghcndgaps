@@ -185,20 +185,40 @@ export function InterpolateControlPanel({
         </select>
       </div>
 
-      <div>
-        <label className={labelClass} htmlFor="interp-gridSize">
-          Grid resolution (per side)
-        </label>
-        <input
-          id="interp-gridSize"
-          type="number"
-          min={4}
-          max={32}
-          className={inputClass}
-          value={value.gridSize}
-          onChange={(e) => set("gridSize", Number(e.target.value))}
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelClass} htmlFor="interp-gridSize">
+            Surface sampling resolution
+          </label>
+          <input
+            id="interp-gridSize"
+            type="number"
+            min={8}
+            max={60}
+            className={inputClass}
+            value={value.gridSize}
+            onChange={(e) => set("gridSize", Number(e.target.value))}
+          />
+        </div>
+        <div>
+          <label className={labelClass} htmlFor="interp-contourLevels">
+            Contour lines
+          </label>
+          <input
+            id="interp-contourLevels"
+            type="number"
+            min={3}
+            max={15}
+            className={inputClass}
+            value={value.contourLevels}
+            onChange={(e) => set("contourLevels", Number(e.target.value))}
+          />
+        </div>
       </div>
+      <p className="-mt-2 text-[11px] text-[#898781]">
+        Sampling resolution controls how smooth the contour lines are; it isn&apos;t itself
+        displayed.
+      </p>
 
       <div>
         <label className={labelClass} htmlFor="interp-rangeKm">

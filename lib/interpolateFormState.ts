@@ -10,6 +10,7 @@ export interface InterpolateFormState {
   lonMax: number;
   gridSize: number;
   rangeKm: number;
+  contourLevels: number;
 }
 
 function isoDate(d: Date): string {
@@ -29,7 +30,8 @@ export function defaultInterpolateFormState(): InterpolateFormState {
     latMax: 31,
     lonMin: -84,
     lonMax: -79.5,
-    gridSize: 20,
+    gridSize: 30,
     rangeKm: 150,
+    contourLevels: 8,
   };
 }

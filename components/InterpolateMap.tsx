@@ -2,12 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { DeckGL } from "@deck.gl/react";
-import { PolygonLayer, ScatterplotLayer } from "@deck.gl/layers";
+import { PathLayer, PolygonLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import { Map as MapLibreMap } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { BoundingBox, InterpolatedCell, InterpolatedStationPoint } from "@/lib/types";
-import { valueToColor } from "@/lib/colorScale";
-import { hexagonPolygon } from "@/lib/hexGeometry";
+import type {
+  BoundingBox,
+  ContourLine,
+  InterpolatedStationPoint,
+  VoronoiCell,
+} from "@/lib/types";
+import { bandedColor } from "@/lib/colorScale";
 
 // Matches components/StationMap.tsx / OptimizeMap.tsx so all three tabs look the same.
 const BASEMAP_STYLE = {
@@ -40,9 +44,10 @@ const BASEMAP_STYLE = {
 interface InterpolateMapProps {
   bbox: BoundingBox;
   existingStations: InterpolatedStationPoint[];
-  grid: InterpolatedCell[];
-  cellLatSpan: number;
-  cellLonSpan: number;
+  voronoi: VoronoiCell[];
+  contours: ContourLine[];
+  minValue: number;
+  maxValue: number;
   unit: string;
 }
 
@@ -51,6 +56,16 @@ interface HoverInfo {
   y: number;
   label: string;
   detail?: string;
+}
+
+interface ContourPathDatum {
+  level: number;
+  path: [number, number][];
+}
+
+interface ContourLabelDatum {
+  level: number;
+  position: [number, number];
 }
 
 function initialViewState(bbox: BoundingBox) {
@@ -66,64 +81,100 @@ function initialViewState(bbox: BoundingBox) {
 export function InterpolateMap({
   bbox,
   existingStations,
-  grid,
-  cellLatSpan,
-  cellLonSpan,
+  voronoi,
+  contours,
+  minValue,
+  maxValue,
   unit,
 }: InterpolateMapProps) {
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const viewState = useMemo(() => initialViewState(bbox), [bbox]);
 
-  // Scale both the grid and the station markers off the same [min, max] so a station's dot
-  // color lines up with the interpolated surface color right underneath it.
-  const [minValue, maxValue] = useMemo(() => {
-    const values = [...grid.map((c) => c.estimate), ...existingStations.map((s) => s.value)];
-    if (values.length === 0) return [0, 1];
-    return [Math.min(...values), Math.max(...values)];
-  }, [grid, existingStations]);
+  // Same thresholds drive both the Voronoi fill bands and the isolines, so a cell's shade and
+  // the contour lines crossing it agree with each other.
+  const levels = useMemo(() => contours.map((c) => c.level), [contours]);
 
-  // Hexagon "radius" (center to vertex) in meters. Flat-to-flat width is radius * sqrt(3), so
-  // sizing off the tighter of lat/lon spacing with a bit of overlap keeps the hex tiling
-  // gapless across the square candidate lattice instead of leaving diamond-shaped holes.
-  const cellRadiusMeters = useMemo(() => {
-    const centerLat = (bbox.latMin + bbox.latMax) / 2;
-    const latMeters = cellLatSpan * 111_320;
-    const lonMeters = cellLonSpan * 111_320 * Math.cos((centerLat * Math.PI) / 180);
-    return Math.min(latMeters, lonMeters) * 0.6;
-  }, [bbox, cellLatSpan, cellLonSpan]);
+  const stationValueById = useMemo(
+    () => new Map(existingStations.map((s) => [s.id, s.value])),
+    [existingStations],
+  );
+
+  const contourPaths = useMemo<ContourPathDatum[]>(
+    () => contours.flatMap((c) => c.paths.map((path) => ({ level: c.level, path }))),
+    [contours],
+  );
+
+  // One label per level, anchored to the midpoint of that level's longest ring.
+  const contourLabels = useMemo<ContourLabelDatum[]>(
+    () =>
+      contours.map((c) => {
+        const longest = c.paths.reduce((a, b) => (b.length > a.length ? b : a), c.paths[0]);
+        return { level: c.level, position: longest[Math.floor(longest.length / 2)] };
+      }),
+    [contours],
+  );
 
   const layers = [
-    new PolygonLayer<InterpolatedCell>({
-      id: "interpolated-cells",
-      data: grid,
-      getPolygon: (d) => hexagonPolygon(d, cellRadiusMeters),
-      getFillColor: (d) => [...valueToColor(d.estimate, minValue, maxValue), 190],
-      stroked: false,
+    new PolygonLayer<VoronoiCell>({
+      id: "voronoi-cells",
+      data: voronoi,
+      getPolygon: (d) => d.polygon,
+      getFillColor: (d) => {
+        const value = stationValueById.get(d.stationId);
+        return value === undefined ? [200, 198, 190, 60] : [...bandedColor(value, levels), 210];
+      },
+      getLineColor: [255, 255, 255, 130],
+      lineWidthMinPixels: 1,
+      stroked: true,
       pickable: true,
       onHover: (info) => {
         if (info.object) {
+          const value = stationValueById.get(info.object.stationId);
           setHover({
             x: info.x,
             y: info.y,
-            label: "Interpolated value",
-            detail: `${info.object.estimate.toFixed(1)} ${unit}`,
+            label: "Area of representation",
+            detail: value === undefined ? undefined : `${value.toFixed(1)} ${unit}`,
           });
         } else {
           setHover(null);
         }
       },
     }),
+    new PathLayer<ContourPathDatum>({
+      id: "contour-lines",
+      data: contourPaths,
+      getPath: (d) => d.path,
+      getColor: [60, 58, 54, 200],
+      getWidth: 1,
+      widthUnits: "pixels",
+      widthMinPixels: 1,
+      pickable: false,
+    }),
+    new TextLayer<ContourLabelDatum>({
+      id: "contour-labels",
+      data: contourLabels,
+      getPosition: (d) => d.position,
+      getText: (d) => d.level.toFixed(1),
+      getSize: 10,
+      getColor: [40, 38, 34, 255],
+      background: true,
+      getBackgroundColor: [255, 255, 255, 210],
+      backgroundPadding: [3, 1],
+      fontFamily: "Arial, Helvetica, sans-serif",
+      pickable: false,
+    }),
     new ScatterplotLayer<InterpolatedStationPoint>({
       id: "existing-stations",
       data: existingStations,
       getPosition: (d) => [d.lon, d.lat],
-      getFillColor: (d) => [...valueToColor(d.value, minValue, maxValue), 255],
+      getFillColor: [30, 41, 59, 235],
       getRadius: 1,
       radiusUnits: "pixels",
-      radiusMinPixels: 4,
-      radiusMaxPixels: 8,
+      radiusMinPixels: 3,
+      radiusMaxPixels: 5,
       stroked: true,
-      getLineColor: [11, 11, 11, 220],
+      getLineColor: [255, 255, 255, 220],
       lineWidthMinPixels: 1,
       pickable: true,
       onHover: (info) => {
@@ -167,7 +218,7 @@ export function InterpolateMap({
       <div className="absolute bottom-2 left-2 z-10 flex flex-col gap-1.5 rounded-md border border-black/10 dark:border-white/15 bg-white/90 dark:bg-[#1a1a19]/90 px-2.5 py-1.5 text-[10px] text-[#52514e] dark:text-[#c3c2b7]">
         <div>
           <div className="mb-1 font-medium text-[#0b0b0b] dark:text-white">
-            {unit ? `Interpolated value (${unit})` : "Interpolated value"}
+            {unit ? `Value (${unit})` : "Value"}
           </div>
           <div
             className="h-2 w-32 rounded-sm"
@@ -179,8 +230,12 @@ export function InterpolateMap({
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full border border-black bg-[#6da7ec]" />
-          existing station (observed value)
+          <span className="inline-block h-2.5 w-2.5 rounded-full border border-white bg-[#1e293b]" />
+          existing station
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-px w-4 bg-[#3c3a36]" />
+          contour line (interpolated isoline)
         </div>
       </div>
     </div>

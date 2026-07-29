@@ -31,6 +31,7 @@ export default function InterpolatePage() {
       lonMax: String(query.lonMax),
       gridSize: String(query.gridSize),
       rangeKm: String(query.rangeKm),
+      contourLevels: String(query.contourLevels),
     });
 
     fetch(`/api/interpolate?${params.toString()}`)
@@ -86,8 +87,8 @@ export default function InterpolatePage() {
           {data && !error && (
             <div className="mt-3 text-xs text-[#898781]">
               {data.existingStations.length} station
-              {data.existingStations.length === 1 ? "" : "s"} with data · {data.grid.length}{" "}
-              land cells estimated
+              {data.existingStations.length === 1 ? "" : "s"} with data · {data.contours.length}{" "}
+              contour line{data.contours.length === 1 ? "" : "s"}
             </div>
           )}
           {data && !error && data.existingStations.length === 0 && (
@@ -103,9 +104,10 @@ export default function InterpolatePage() {
             <InterpolateMap
               bbox={form}
               existingStations={data?.existingStations ?? []}
-              grid={data?.grid ?? []}
-              cellLatSpan={data?.cellLatSpan ?? 1}
-              cellLonSpan={data?.cellLonSpan ?? 1}
+              voronoi={data?.voronoi ?? []}
+              contours={data?.contours ?? []}
+              minValue={data?.minValue ?? 0}
+              maxValue={data?.maxValue ?? 1}
               unit={data?.unit ?? ""}
             />
           </div>
