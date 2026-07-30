@@ -50,6 +50,34 @@ export interface StationsResponse {
   daily: DailySummary[];
 }
 
+export interface MalfunctionStationResult {
+  id: string;
+  lat: number;
+  lon: number;
+  name: string;
+  daysChecked: number;
+  suspectDays: number;
+  suspectPct: number;
+  likelyMalfunctioning: boolean;
+}
+
+export interface MalfunctionDailySummary {
+  date: string;
+  stationsChecked: number;
+  suspectStations: number;
+  suspectPct: number;
+}
+
+export interface MalfunctionResponse {
+  variable: Variable;
+  start: string;
+  end: string;
+  bbox: BoundingBox;
+  stationCount: number;
+  stations: MalfunctionStationResult[];
+  daily: MalfunctionDailySummary[];
+}
+
 export interface Preset {
   name: string;
   latMin: number;
