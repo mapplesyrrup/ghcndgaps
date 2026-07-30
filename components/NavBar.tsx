@@ -7,6 +7,7 @@ const TABS = [
   { href: "/", label: "Station Gaps" },
   { href: "/optimize", label: "Optimization of Weather Station Placement" },
   { href: "/interpolate", label: "Interpolation" },
+  { href: "/malfunction", label: "Malfunction" },
 ];
 
 export function NavBar() {
