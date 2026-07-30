@@ -101,6 +101,33 @@ function pointInRing(lon: number, lat: number, ring: Ring): boolean {
   return inside;
 }
 
+// Land polygons whose bounding box could plausibly overlap the given bbox, in
+// [[ring, ...], ...] form (one entry per polygon, each ring an array of [lon, lat] points) —
+// a cheap pre-filter so callers doing real polygon clipping (see lib/optimization/landClip.ts)
+// only pay for the handful of landmasses actually near the query instead of all ~1400 in the
+// world dataset.
+export function getLandPolygonsNear(bbox: {
+  latMin: number;
+  latMax: number;
+  lonMin: number;
+  lonMax: number;
+}): Position[][][] {
+  const polygons = loadLandPolygons();
+  const result: Position[][][] = [];
+  for (const polygon of polygons) {
+    if (
+      polygon.maxLon < bbox.lonMin ||
+      polygon.minLon > bbox.lonMax ||
+      polygon.maxLat < bbox.latMin ||
+      polygon.minLat > bbox.latMax
+    ) {
+      continue;
+    }
+    result.push(polygon.rings.map((r) => r.points));
+  }
+  return result;
+}
+
 export function isOnLand(point: LatLon): boolean {
   const polygons = loadLandPolygons();
 

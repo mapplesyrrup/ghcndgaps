@@ -9,6 +9,7 @@ import { toDisplayUnit, unitLabel } from "@/lib/units";
 import { buildCandidateGrid } from "@/lib/optimization/grid";
 import { buildKrigingSystem, krigingPredict, type VariogramParams } from "@/lib/optimization/kriging";
 import { capActiveStations } from "@/lib/optimization/placement";
+import { clipRingToLand, landWithinBbox, splitPathToLand } from "@/lib/optimization/landClip";
 
 const querySchema = z
   .object({
@@ -142,9 +143,12 @@ async function computeInterpolation(
   const variogram: VariogramParams = { rangeKm, partialSill: 1, nugget: 0.05 };
   const system = buildKrigingSystem(known, variogram);
 
-  // Dense sampling grid (unlike the optimize tab, not land-masked — isoline/Thiessen maps
-  // conventionally cover the whole study area, water included) purely to feed the marching
-  // squares contour generator; it isn't returned to the client itself.
+  // Land geometry clipped to this bbox once, reused below to clip every Voronoi cell and
+  // contour path — cheaper than intersecting each one against the full world land dataset.
+  const land = landWithinBbox(bbox);
+
+  // Dense sampling grid purely to feed the marching-squares contour generator; the raw grid
+  // itself isn't returned to the client, only the (land-clipped) contour lines derived from it.
   const { cells, latStep, lonStep } = buildCandidateGrid(bbox, gridSize);
   const values = cells.map(
     (cell) => toDisplayUnit(variable, krigingPredict(system, cell, knownValuesRaw, variogram).estimate),
@@ -167,16 +171,17 @@ async function computeInterpolation(
       const paths: [number, number][][] = [];
       for (const polygon of multiPolygon.coordinates) {
         for (const ring of polygon) {
-          if (ring.length >= 3) {
-            paths.push(ringToLonLat(ring as [number, number][], bbox, lonStep, latStep));
-          }
+          if (ring.length < 3) continue;
+          const lonLatRing = ringToLonLat(ring as [number, number][], bbox, lonStep, latStep);
+          paths.push(...splitPathToLand(lonLatRing, land));
         }
       }
       if (paths.length > 0) contours.push({ level, paths });
     }
   }
 
-  // Thiessen/Voronoi polygons: each station's area of representation, clipped to the bbox.
+  // Thiessen/Voronoi polygons: each station's area of representation, clipped to the bbox
+  // and then to land — a coastal station's cell shouldn't paint the open ocean.
   const voronoi: InterpolateResponse["voronoi"] = [];
   if (existingStations.length > 0) {
     const delaunay = Delaunay.from(
@@ -187,7 +192,10 @@ async function computeInterpolation(
     const diagram = delaunay.voronoi([lonMin, latMin, lonMax, latMax]);
     existingStations.forEach((station, i) => {
       const polygon = diagram.cellPolygon(i);
-      if (polygon) voronoi.push({ stationId: station.id, polygon: polygon as [number, number][] });
+      if (!polygon) return;
+      for (const clipped of clipRingToLand(polygon as [number, number][], land)) {
+        voronoi.push({ stationId: station.id, polygon: clipped });
+      }
     });
   }
 
