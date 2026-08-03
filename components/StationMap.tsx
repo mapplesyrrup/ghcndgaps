@@ -60,12 +60,14 @@ function initialViewState(bbox: BoundingBox) {
 
 export function StationMap({ stations, bbox }: StationMapProps) {
   const [hover, setHover] = useState<HoverInfo | null>(null);
+  const [showStations, setShowStations] = useState(true);
   const viewState = useMemo(() => initialViewState(bbox), [bbox]);
 
   const layers = [
     new ScatterplotLayer<StationResult>({
       id: "stations",
       data: stations,
+      visible: showStations,
       getPosition: (d) => [d.lon, d.lat],
       getFillColor: (d) => [...missingPctToColor(d.missingPct), 220],
       getRadius: 1,
@@ -96,6 +98,14 @@ export function StationMap({ stations, bbox }: StationMapProps) {
       >
         <MapLibreMap mapStyle={BASEMAP_STYLE} />
       </DeckGL>
+
+      <button
+        type="button"
+        onClick={() => setShowStations((v) => !v)}
+        className="absolute top-2 right-2 z-10 rounded-md border border-black/10 dark:border-white/15 bg-white/90 dark:bg-[#1a1a19]/90 px-2.5 py-1.5 text-xs font-medium text-[#0b0b0b] dark:text-white shadow-sm hover:bg-white dark:hover:bg-[#1a1a19]"
+      >
+        {showStations ? "Hide stations" : "Show stations"}
+      </button>
 
       {hover && (
         <div
