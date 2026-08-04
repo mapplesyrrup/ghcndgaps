@@ -104,7 +104,7 @@ export function InterpolateMap({
     [contours],
   );
 
-  // One label per level, anchored to the midpoint of that level's longest ring.
+  // one label per level, anchored to the midpoint of that level's longest ring.
   const contourLabels = useMemo<ContourLabelDatum[]>(
     () =>
       contours.map((c) => {
