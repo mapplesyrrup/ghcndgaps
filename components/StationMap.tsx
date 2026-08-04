@@ -69,13 +69,15 @@ export function StationMap({ stations, bbox }: StationMapProps) {
       data: stations,
       visible: showStations,
       getPosition: (d) => [d.lon, d.lat],
-      getFillColor: (d) => [...missingPctToColor(d.missingPct), 220],
-      getRadius: 1,
+      // Fully-reporting stations (0% missing) are the majority in most queries and aren't
+      // the interesting case, so fade and shrink them to let stations with actual gaps stand out.
+      getFillColor: (d) => [...missingPctToColor(d.missingPct), d.missingPct === 0 ? 90 : 220],
+      getRadius: (d) => (d.missingPct === 0 ? 4 : 7),
       radiusUnits: "pixels",
-      radiusMinPixels: 5,
+      radiusMinPixels: 3,
       radiusMaxPixels: 14,
       stroked: true,
-      getLineColor: [11, 11, 11, 120],
+      getLineColor: (d) => (d.missingPct === 0 ? [11, 11, 11, 60] : [11, 11, 11, 120]),
       lineWidthMinPixels: 1,
       pickable: true,
       onHover: (info) => {
@@ -132,6 +134,10 @@ export function StationMap({ stations, bbox }: StationMapProps) {
         <div className="mt-0.5 flex justify-between">
           <span>0%</span>
           <span>100%</span>
+        </div>
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#cde2fb] opacity-60" />
+          0% missing (smaller, fainter)
         </div>
       </div>
     </div>
