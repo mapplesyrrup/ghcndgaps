@@ -7,9 +7,8 @@ export interface CandidateGrid {
   lonStep: number;
 }
 
-// Cell-center grid over the bbox. This *is* the candidate pool Snyder (2018) pre-filters
-// before scoring — real accessibility/expert-site inputs can be merged into `cells` later
-// without changing anything downstream.
+// Cell-center grid over the bbox. This is the candidate pool Snyder (2018) pre-filters
+// before scoring
 export function buildCandidateGrid(bbox: BoundingBox, gridSize: number): CandidateGrid {
   const latStep = (bbox.latMax - bbox.latMin) / gridSize;
   const lonStep = (bbox.lonMax - bbox.lonMin) / gridSize;
