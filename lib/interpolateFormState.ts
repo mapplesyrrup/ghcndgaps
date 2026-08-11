@@ -25,7 +25,6 @@ export function defaultInterpolateFormState(): InterpolateFormState {
     variable: "TMAX",
     start: isoDate(start),
     end: isoDate(end),
-    // Same Florida / Gulf Coast box as the other tabs' defaults.
     latMin: 26,
     latMax: 31,
     lonMin: -84,
