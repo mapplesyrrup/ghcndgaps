@@ -66,8 +66,7 @@ export default function InterpolatePage() {
       <header className="border-b border-black/10 dark:border-white/10 px-6 py-4">
         <h1 className="text-lg font-semibold text-[#0b0b0b] dark:text-white">Interpolation</h1>
         <p className="text-sm text-[#52514e] dark:text-[#c3c2b7]">
-          Ordinary kriging estimate of the field value (Amorim et al. 2012) from real GHCN-D
-          observations, averaged over the date range and reconstructed across the region.
+          Ordinary kriging estimate of the field value (Amorim et al. 2012).
         </p>
       </header>
 
@@ -93,8 +92,7 @@ export default function InterpolatePage() {
           )}
           {data && !error && data.existingStations.length === 0 && (
             <div className="mt-3 rounded-md border border-dashed border-black/15 dark:border-white/15 px-3 py-2 text-[11px] leading-relaxed text-[#898781]">
-              No stations in this box reported {data.variable} across the whole date range —
-              widen the box or date range.
+              No stations in this box reported {data.variable} across the whole date range
             </div>
           )}
         </div>

@@ -89,9 +89,6 @@ export function InterpolateMap({
 }: InterpolateMapProps) {
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const viewState = useMemo(() => initialViewState(bbox), [bbox]);
-
-  // Same thresholds drive both the Voronoi fill bands and the isolines, so a cell's shade and
-  // the contour lines crossing it agree with each other.
   const levels = useMemo(() => contours.map((c) => c.level), [contours]);
 
   const stationValueById = useMemo(

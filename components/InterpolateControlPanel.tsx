@@ -216,13 +216,12 @@ export function InterpolateControlPanel({
         </div>
       </div>
       <p className="-mt-2 text-[11px] text-[#898781]">
-        Sampling resolution controls how smooth the contour lines are; it isn&apos;t itself
-        displayed.
+        Sampling resolution indicates how smooth the contour lines are.
       </p>
 
       <div>
         <label className={labelClass} htmlFor="interp-rangeKm">
-          Variogram range — spatial correlation length ({value.rangeKm} km)
+          Variogram range: spatial correlation length ({value.rangeKm} km)
         </label>
         <input
           id="interp-rangeKm"
@@ -234,9 +233,6 @@ export function InterpolateControlPanel({
           value={value.rangeKm}
           onChange={(e) => set("rangeKm", Number(e.target.value))}
         />
-        <p className="mt-1 text-[11px] text-[#898781]">
-          How far a station&apos;s reading is assumed to represent nearby unmeasured points.
-        </p>
       </div>
 
       <button
